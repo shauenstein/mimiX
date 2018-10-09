@@ -54,12 +54,14 @@
 \begin{document}
 	\maketitle
 	
-	\begin{abstract}\bfseries
+\textbf{Storyline}:
 	\begin{enumerate}
 		\item In spatial analyses of species occurrence, residual spatial autocorrelation (rSAC) is a frequent problem. 
-		\item Sources of rSAC are unknown and can be of varying nature: dispersal, missing predictor, spatially varying observation error, ...
-		\item 
+		Sources of rSAC are unknown and can be of varying nature: dispersal, missing predictor, spatially varying observation error, ...
+		\item Frequently applied techniques to deal with rSAC are parametric models with a spatially parameterised variance-covariance matrix (see SAC-update). Less popular but appealing are methods that estimate latent predictors. These methods attempt to build a (set of) predictor(s) that represent unobserved, spatially autocorrelated, covariates which cause the observed rSAC. While these estimated surfaces might contain information about unobserved or disregarded data-generating processes (ecological or observation process), they are typically not further considered in the analysis. 
+		\item Problem: we don't know how well and in which situations the developed methods can produce surfaces that resemble missing predictors. 
+		\item Here we test several situations in an SDM-like analysis to quantify the potential of latent predictor estimating to identify missing predictors. For this we use mostly simulated data, but demonstrate the approach also in a case study modelling species richness.
+
 	\end{enumerate}	
-	\end{abstract} 
 
 \end{document}
