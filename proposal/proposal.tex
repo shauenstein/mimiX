@@ -71,7 +71,7 @@
 \section{Objectives}
 \begin{itemize}
 	\item Identify missing predictors: does the latent predictor surface provide information about misspecified models?
-	\item Are some methods (Gaussian Process Models, Wavelets, Spatial Eigenvector Mapping, Generalised Additive Models) better than others for this purpose?
+	\item Are any of the applied methods (Gaussian Process Models, Wavelets, Spatial Eigenvector Mapping, Generalised Additive Models) better than others for this purpose?
 	\item If it works in principle, where can things go wrong: different causes of rSAC, biased estimates?
 \end{itemize}
 
@@ -79,12 +79,12 @@
 \begin{enumerate}
 	\item simulate data using FReibier::simData() with dataset **2 (omitted predictor as cause for rSAC)
 	\item fit Gaussian Process Models, Wavelets, Spatial Eigenvector Mapping, Generalised Additive Models using the 'misspecified' model structure
-	\item check rSAC
+	\item check rSAC: precondition is resolving this issue
 	\item predict latent predictor $\hat{x}$
 	\item Output:
 	\begin{itemize}
 		\item Median absolute difference (MAD) between left-out covariate $x$ and estimated latent predictor $\hat{x}$
-		\item Bias on $\beta$-estimates (Can we use RMSE?)
+		\item Bias on $\beta$-estimates (Can we use RMSE or any other single-value measure?)
 	\end{itemize}
 \end{enumerate}
 
