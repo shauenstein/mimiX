@@ -1,0 +1,18 @@
+\begin{thebibliography}{}
+
+\bibitem[Dormann et~al., 2007]{Dormann2007}
+Dormann, C.~F., McPherson, J.~M., Ara{\'u}jo, M.~B., Bivand, R., Bolliger, J.,
+  Carl, G., Davies, R.~G., Hirzel, A., Jetz, W., Kissling, D.~W., K\"uhn, I.,
+  Ohlemüller, R., Peres-Neto, P.~R., Reineking, B., Schr\"oder, B., M.~Schurr,
+  F., and Wilson, R. (2007).
+\newblock Methods to account for spatial autocorrelation in the analysis of
+  species distributional data: a review.
+\newblock {\em Ecography}, 30(5):609--628.
+
+\bibitem[Mahecha and Schmidtlein, 2008]{Mahecha2008}
+Mahecha, M.~D. and Schmidtlein, S. (2008).
+\newblock Revealing biogeographical patterns by nonlinear ordinations and
+  derived anisotropic spatial filters.
+\newblock {\em Global Ecology and Biogeography}, 17(2):284--296.
+
+\end{thebibliography}

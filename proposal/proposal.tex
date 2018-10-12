@@ -45,6 +45,11 @@
 
 
 % ------------------------------------------------------------ %
+\author[1]{Carsten F. Dormann}
+\author[1]{Severin Hauenstein}
+\author[2]{Jussi M\"akinen}
+\affil[1]{Department of Biometry and Environmental System Analysis, University of Freiburg, 79106 Freiburg, Germany}
+\affil[2]{Organismal and Evolutionary Biology Research Program, Faculty of Biological and Environmental Sciences, University of Helsinki, Helsinki, Finland}
 
 \title{Finding the missing predictor}
 \date{\today} %original date of receipt (as indicated by the Editor)
@@ -54,14 +59,49 @@
 \begin{document}
 	\maketitle
 	
-\textbf{Storyline}:
+\section{Storyline}
 	\begin{enumerate}
 		\item In spatial analyses of species occurrence, residual spatial autocorrelation (rSAC) is a frequent problem. 
-		Sources of rSAC are unknown and can be of varying nature: dispersal, missing predictor, spatially varying observation error, ...
-		\item Frequently applied techniques to deal with rSAC are parametric models with a spatially parameterised variance-covariance matrix (see SAC-update). Less popular but appealing are methods that estimate latent predictors. These methods attempt to build a (set of) predictor(s) that represent unobserved, spatially autocorrelated, covariates which cause the observed rSAC. While these estimated surfaces might contain information about unobserved or disregarded data-generating processes (ecological or observation process), they are typically not further considered in the analysis. 
+		Sources of rSAC are unknown and can be of varying nature: dispersal, missing predictor, spatially varying observation error \citep{Dormann2007}.
+		\item Frequently applied techniques to deal with rSAC are parametric models with a spatially parametrised variance-covariance matrix (see SAC-update). Less popular but appealing are methods that estimate latent predictors. These methods attempt to build a (set of) predictor(s) that represent unobserved, spatially autocorrelated, covariates which cause the observed rSAC. While these estimated surfaces might contain information about unobserved or disregarded data-generating processes (ecological or observation process), they are typically not further considered in the analysis. 
 		\item Problem: we don't know how well and in which situations the developed methods can produce surfaces that resemble missing predictors. 
 		\item Here we test several situations in an SDM-like analysis to quantify the potential of latent predictor estimating to identify missing predictors. For this we use mostly simulated data, but demonstrate the approach also in a case study modelling species richness.
-
 	\end{enumerate}	
+
+\section{Objectives}
+\begin{itemize}
+	\item Identify missing predictors: does the latent predictor surface provide information about misspecified models?
+	\item Are some methods (Gaussian Process Models, Wavelets, Spatial Eigenvector Mapping, Generalised Additive Models) better than others for this purpose?
+	\item If it works in principle, where can things go wrong: different causes of rSAC, biased estimates?
+\end{itemize}
+
+\section{Study design}
+\begin{enumerate}
+	\item simulate data using FReibier::simData() with dataset **2 (omitted predictor as cause for rSAC)
+	\item fit Gaussian Process Models, Wavelets, Spatial Eigenvector Mapping, Generalised Additive Models using the 'misspecified' model structure
+	\item check rSAC
+	\item predict latent predictor $\hat{x}$
+	\item Output:
+	\begin{itemize}
+		\item Median absolute difference (MAD) between left-out covariate $x$ and estimated latent predictor $\hat{x}$
+		\item Bias on $\beta$-estimates (Can we use RMSE?)
+	\end{itemize}
+\end{enumerate}
+
+\subsection{Scenarios}
+\begin{itemize}
+	\item 2 distributions: Gaussian, Bernoulli
+	\item Gradient of $\beta$-values in simulating the 'missing' (i.e.~unknown predictor)
+	\item Multiple (start with two) missing predictors
+	\item Missing predictor as part of an interaction term (?)
+	\item Dispersal as additional source of rSAC (couple with CAR-like approach?)
+\end{itemize}
+
+\subsection{Case study}
+Repeat the study on species richness by \citet{Mahecha2008} using the latent-predictor methods (see above) with the aim to identify the variation in survey effort as a missing predictor. 
+
+% References
+\bibliographystyle{apalike} 
+\bibliography{../literature/mimiX}
 
 \end{document}

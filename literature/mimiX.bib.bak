@@ -1,0 +1,18 @@
+% Encoding: UTF-8
+
+@Article{Dormann2007,
+  author        = {Dormann, Carsten F. and McPherson, Jana M. and Ara{\'u}jo, Miguel B. and Bivand, Roger and Bolliger, Janine and Carl, Gudrun and Davies, Richard G. and Hirzel, Alexandre and Jetz, Walter and Kissling, Daniel W. and K\"uhn, Ingolf and Ohlemüller, Ralf and Peres-Neto, Pedro R. and Reineking, Björn and Schr\"oder, Boris and M. Schurr, Frank and Wilson, Robert},
+  title         = {Methods to account for spatial autocorrelation in the analysis of species distributional data: a review},
+  journal       = {Ecography},
+  year          = {2007},
+  volume        = {30},
+  number        = {5},
+  pages         = {609-628},
+  __markedentry = {[severinhauenstein:6]},
+  abstract      = {Species distributional or trait data based on range map (extent-of-occurrence) or atlas survey data often display spatial autocorrelation, i.e. locations close to each other exhibit more similar values than those further apart. If this pattern remains present in the residuals of a statistical model based on such data, one of the key assumptions of standard statistical analyses, that residuals are independent and identically distributed (i.i.d), is violated. The violation of the assumption of i.i.d. residuals may bias parameter estimates and can increase type I error rates (falsely rejecting the null hypothesis of no effect). While this is increasingly recognised by researchers analysing species distribution data, there is, to our knowledge, no comprehensive overview of the many available spatial statistical methods to take spatial autocorrelation into account in tests of statistical significance. Here, we describe six different statistical approaches to infer correlates of species’ distributions, for both presence/absence (binary response) and species abundance data (poisson or normally distributed response), while accounting for spatial autocorrelation in model residuals: autocovariate regression; spatial eigenvector mapping; generalised least squares; (conditional and simultaneous) autoregressive models and generalised estimating equations. A comprehensive comparison of the relative merits of these methods is beyond the scope of this paper. To demonstrate each method's implementation, however, we undertook preliminary tests based on simulated data. These preliminary tests verified that most of the spatial modeling techniques we examined showed good type I error control and precise parameter estimates, at least when confronted with simplistic simulated data containing spatial autocorrelation in the errors. However, we found that for presence/absence data the results and conclusions were very variable between the different methods. This is likely due to the low information content of binary maps. Also, in contrast with previous studies, we found that autocovariate methods consistently underestimated the effects of environmental controls of species distributions. Given their widespread use, in particular for the modelling of species presence/absence data (e.g. climate envelope models), we argue that this warrants further study and caution in their use. To aid other ecologists in making use of the methods described, code to implement them in freely available software is provided in an electronic appendix.},
+  doi           = {10.1111/j.2007.0906-7590.05171.x},
+  eprint        = {https://onlinelibrary.wiley.com/doi/pdf/10.1111/j.2007.0906-7590.05171.x},
+  url           = {https://onlinelibrary.wiley.com/doi/abs/10.1111/j.2007.0906-7590.05171.x},
+}
+
+@Comment{jabref-meta: databaseType:bibtex;}
