@@ -78,23 +78,23 @@
 \section{Study design}
 \begin{enumerate}
 	\item simulate data using FReibier::simData() with dataset **2 (omitted predictor as cause for rSAC)
-	\item fit Gaussian Process Models, Wavelets, Spatial Eigenvector Mapping, Generalised Additive Models using the 'misspecified' model structure
+	\item fit Gaussian Process Models, Wavelets, Spatial Eigenvector Mapping, Generalised Additive Models using the `misspecified' model structure; GLS and GLM as references
 	\item check rSAC: precondition is resolving this issue
 	\item predict latent predictor $\hat{x}$
 	\item Output:
 	\begin{itemize}
-		\item Median absolute difference (MAD) between left-out covariate $x$ and estimated latent predictor $\hat{x}$
-		\item Bias on $\beta$-estimates (Can we use RMSE or any other single-value measure?)
+		\item (absolute) correlation $|r|$ between left-out covariate $x$ and estimated latent predictor $\hat{x}$ (MAD or RMSE make no sense, as mimiX can be a multiple of, of shifted by some amount relative to, the true missing x); (this is essential a map comparison, see, e.g. \url{http://amap-collaboratif.cirad.fr/pages-chercheurs/?page_id=421}; there are reasons why this is not trivial: we need to tell between bias and local misfit, for example, and spatial autocorrelation comes in, too; solution: report $|r|$, but no test or intervals (which would be affected by SAC))
+		\item Bias on $\beta$-estimates (Can we use RMSE or any other single-value measure?) Here we need to make sure to also record SEs of coefficient estimates to quantify bias relatively.
 	\end{itemize}
 \end{enumerate}
 
 \subsection{Scenarios}
 \begin{itemize}
 	\item 2 distributions: Gaussian, Bernoulli
-	\item Gradient of $\beta$-values in simulating the 'missing' (i.e.~unknown predictor)
+	\item Gradient of $\beta$-values in simulating the missing' (i.e.~unknown predictor)
 	\item Multiple (start with two) missing predictors
-	\item Missing predictor as part of an interaction term (?)
-	\item Dispersal as additional source of rSAC (couple with CAR-like approach?)
+	\item Missing predictor as part of an interaction term (!); otherwise one might not expect any bias (if covariate effects are plain additive); idea is that estimating the interaction may lead to correct estimation of the (remaining) main effects
+	\item Dispersal as additional source of rSAC (couple with CAR-like approach?) (CFD: I don't need this ...)
 \end{itemize}
 
 \subsection{Case study}
