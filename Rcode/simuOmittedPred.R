@@ -98,7 +98,23 @@ cor(fitGAM, dats$data$x1) # 0.4811 ...
 plot(fitGAM, dats$data$x1, las=1, ylab="truth")
 abline(lm(dats$data$x1 ~ fitGAM), col="darkgreen", lwd=2)
 
-
+#### GP for ommitted x1 ####
+# GPfit holds 2000 samples of predictions. The variance of mean predictive posteriors
+# does not capture the covariance between the data  points (spatial correlation)
+# -> we need to conduct a Monte Carlo approximation (2000 samples) on the predictive posterior.
+# By using only the mean pred we get a higher correlation (.83) than by using
+# any MC sample.
+beta_estimates <- read.table("MATLABcode/Beta_estimate.txt", sep = ",", col.names = c("E","Var"))
+fitGP <- read.table("MATLABcode/Omitted_pred_mean.txt", sep = ",") # 2500X1 vector
+fitGP <- read.table("MATLABcode/Omitted_pred.txt", sep = ",") # 2500X2000 matrix
+levelplot(fitGP[,500] ~ Lon + Lat, data=dats$data) # the 500th realization of the predictive posterior
+levelplot(x1 ~ Lon + Lat, data=dats$data)
+corGP <- 0
+for (i in 1:ncol(fitGP)) {
+  corGP[i] = cor(fitGP[,i],dats$data$x1)
+}
+hist(corGP) # correlation falls between .77 and .82 with mean .7936
+quantile(corGP, c(.025,.5,.975))
 
 #### coefficient results ####
 methods <- c("truth", "lm", "GLS", "SEVM", "WRM", "GAM")
