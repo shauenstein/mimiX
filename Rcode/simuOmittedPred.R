@@ -100,7 +100,7 @@ abline(lm(dats$data$x1 ~ fitGAM), col="darkgreen", lwd=2)
 
 #### GP for ommitted x1 ####
 # GPfit holds 2000 samples of predictions. The variance of mean predictive posteriors
-# does not capture the covariance between the data  points (spatial correlation)
+# does not capture the full variance of the GP prediction
 # -> we need to conduct a Monte Carlo approximation (2000 samples) on the predictive posterior.
 # By using only the mean pred we get a higher correlation (.83) than by using
 # any MC sample.
@@ -115,6 +115,31 @@ for (i in 1:ncol(fitGP)) {
 }
 hist(corGP) # correlation falls between .77 and .82 with mean .7936
 quantile(corGP, c(.025,.5,.975))
+
+#### GP for ommitted x1 ####
+## Fit a hierarchical Bayesian model with brms
+## -> GP parameters are fixed
+require(brms)
+f_data <- list("y" = dats$data$y, "lon" = dats$data$Lon, "lat" = dats$data$Lat,
+               "x4" = dats$data$x4, "x3" = dats$data$x3)
+
+fit <- brm(y ~ gp(lon, lat) + x4 + I(x4)^2 + x4*x3, f_data, chains = 2)
+
+
+
+## Fit a hiearchical Bayesian model and sample its' posterior with Stan
+require(rstan)
+options(mc.cores = parallel::detectCores())
+
+coord <- matrix(c(dats$data$Lon, dats$data$Lat), nrow = length(dats$data$Lat), ncol = 2)
+covariates <- matrix(c(dats$data$x4, dats$data$x4^2, dats$data$x4*dats$data$x3), nrow = length(dats$data$Lat), ncol = 3)
+
+f_data <- list("y" = dats$data$y, "x" = coord, "covar" = covariates,
+               "N" = length(dats$data$y))
+
+dgp_fit <- stan(file='mimix_gauss_pr.stan', data=f_data, iter=1000, warmup=0,
+                chains=1, seed=2, refresh=1000, algorithm="NUTS")
+
 
 #### coefficient results ####
 methods <- c("truth", "lm", "GLS", "SEVM", "WRM", "GAM")
