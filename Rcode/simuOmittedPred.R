@@ -98,18 +98,39 @@ cor(fitGAM, dats$data$x1) # 0.4811 ...
 plot(fitGAM, dats$data$x1, las=1, ylab="truth")
 abline(lm(dats$data$x1 ~ fitGAM), col="darkgreen", lwd=2)
 
-#### GP for ommitted x1 ####
-## GPstuff
+#### latent spatial GP ####
+## GPstuff ##
 
-# GPfit holds 2000 samples of predictions. The variance of mean predictive posteriors
-# does not capture the full variance of the GP prediction
-# -> we need to conduct a Monte Carlo approximation (2000 samples) on the predictive posterior.
-# By using only the mean pred we get a higher correlation (.83) than by using
-# any MC sample.
+# Empirical Bayes #
 
-GPstuff_beta_mean <- read.table("MATLABcode/Beta_estimate.txt", sep = ",", col.names = c("E","Var"))
-fitGP <- read.table("MATLABcode/Omitted_pred_mean.txt", sep = ",") # 2500X1 vector
-fitGP <- read.table("MATLABcode/Omitted_pred.txt", sep = ",") # 2500X2000 matrix
+# Omitted_pred_mean has the mean predictive posterior of the latent GP. However the mean value
+# alone does not reveal the variance of the predictive posterior.
+# -> We need to conduct a Monte Carlo approximation (2000 samples) on the predictive posterior.
+# Omitted_pred holds 2000 samples of predictions.
+# The mean pred correlates with x1 more strongly (.83) than any MC sample (.77-.82).
+
+# Matern type of covariance function
+GPstuff_beta_mean <- read.table("MATLABcode/Matern_gp_beta_estimate.txt", sep = ",", col.names = c("E","Var"))
+fitGP <- read.table("MATLABcode/Matern_gp_omitted_pred_mean.txt", sep = ",") # 2500X1 vector
+cor_mean = cor(fitGP,dats$data$x1)
+
+fitGP <- read.table("MATLABcode/Matern_gp_omitted_pred.txt", sep = ",") # 2500X2000 matrix
+levelplot(fitGP[,500] ~ Lon + Lat, data=dats$data) # the 500th realization of the predictive posterior
+levelplot(x1 ~ Lon + Lat, data=dats$data)
+corGP <- 0
+for (i in 1:ncol(fitGP)) {
+  corGP[i] = cor(fitGP[,i],dats$data$x1)
+}
+hist(corGP) # correlation falls between .78 and .81 with mean .794
+quantile(corGP, c(.025,.5,.975))
+
+
+# Squared exponential type of covariance function
+GPstuff_beta_mean <- read.table("MATLABcode/Sqrd_exp_gp_beta_estimate.txt", sep = ",", col.names = c("E","Var"))
+fitGP <- read.table("MATLABcode/Sqrd_exp_gp_omitted_pred_mean.txt", sep = ",") # 2500X1 vector
+cor_mean = cor(fitGP,dats$data$x1)
+
+fitGP <- read.table("MATLABcode/Sqrd_exp_gp_omitted_pred.txt", sep = ",") # 2500X2000 matrix
 levelplot(fitGP[,500] ~ Lon + Lat, data=dats$data) # the 500th realization of the predictive posterior
 levelplot(x1 ~ Lon + Lat, data=dats$data)
 corGP <- 0
@@ -122,11 +143,10 @@ quantile(corGP, c(.025,.5,.975))
 
 ### BRMS ###
 ## Fit a hierarchical Bayesian model with brms
-## -> GP parameters are estimated
+
+# Full Bayesian
 brms_data <- list("y" = dats$data$y, "lon" = dats$data$Lon, "lat" = dats$data$Lat,
                   "x4" = dats$data$x4, "x4_2" = dats$data$x4^2, "x3" = dats$data$x3)
-
-#prior_temp <- get_prior(y ~ gp(lon, lat) + x4 + x4_2 + x4:x3, brms_data)
 
 prior_all <- set_prior("normal(0,10)", class = "sigma") + 
   set_prior("normal(0,10)", class = "Intercept") + 
@@ -139,57 +159,98 @@ names(inits) <- c("sigma", "lscale", "sdgp", "Intercept", "b")
 inits_chain1 <- list(inits)
 
 fit <- brm(y ~ gp(lon, lat) + x4 + x4_2 + x4:x3, brms_data, prior = prior_all, inits = inits_chain1,  chains = 1, iter=100)
-pairs(fit)
 
 # correlation between prediction (with spatial GP) and missing covariate
 predict_ef <- predict(fit, re_formula = y ~ gp(lon, lat))
-cor(predict_ef[,4],dats$data$x1) # .84 - nice performance
+cor(predict_ef[,4],dats$data$x1) # .84 - nice performance (with a subset (500) of data)
 
 # get model structure as a Stan code
 brm_model_stan <- stancode(fit)
 
+# However, brms is awfully slow with the full data set. I don't follow the way, how GP
+# is implemented in brms. They use the Laplacian eigenvalues of the covariance matrix
+# and take the spectral density of the eigenvalues given the covariance function
+# parameters. Then they approximate GP value in data points by multiplying Laplacian
+# eigenfunctions with a random sample of the spectral density. I would prefer of using
+# STAN, where we can formulate the model in an understandable manner
 
 
 ### STAN ###
-## Fit a hiearchical Bayesian model and sample its' posterior with Stan
 options(mc.cores = parallel::detectCores())
 
 coord <- matrix(c(dats$data$Lon, dats$data$Lat), nrow = length(dats$data$Lat), ncol = 2)
 covariates <- matrix(c(dats$data$x4, dats$data$x4^2, dats$data$x4*dats$data$x3), nrow = length(dats$data$Lat), ncol = 3)
 
-# with linear mean function
+# prior for the variation of the linear weights
 linear_sigma = 10
 f_data <- list("y" = dats$data$y, "coord" = coord, "x" = covariates,
                "N" = length(dats$data$y), "linear_sigma" = linear_sigma)
+
+## Empirical Bayes
+inits <- list(lengthscale = .2, sigma = .2, sigma_e = .5, alpha = .5, beta = c(.1, .1, .1))
+
+# optimize hyperparameters
+gp_opt1 <- stan_model(file='mimix_gp_empirical_bayes.stan')
+opt_fit <- optimizing(gp_opt1, data=f_data, init=inits, seed=5838298, hessian=FALSE)
+
+# predict with MAP estimates for hyperparameters
+pred_data <- list("y" = dats$data$y, "coord" = coord, "N" = length(dats$data$y),
+                  lengthscale = opt_fit$par[1],sigma = opt_fit$par[2],
+                  sigma_e = opt_fit$par[3])
+                  
+pred_opt_fit <- stan(file='mimix_gp_empirical_bayes_pred.stan', data=pred_data, iter=1000, warmup=0,
+                     chains=1, seed=5838298, refresh=1, algorithm="Fixed_param")
+save.image("gp_fit_stan_EB.RData")
+
+# correlation of x1 and f_predict
+# store samples in a matrix
+load("gp_fit_stan_EB.RData")
+n = length(dats$data$y)
+iter_n = pred_opt_fit@sim$iter
+
+p_samples <- data.frame(pred_opt_fit@sim$samples[[1]])
+f_pred <- p_samples[,1:(ncol(p_samples)-1)]
+
+# correlation of x1 and each sample of f_predict
+corGP <- apply(f_pred, 1, function(x) cor(x,dats$data$x1))
+hist(corGP)
+mean(corGP) # the mean correlation .61
+
+# correlation of x1 and mean f_predict
+pred_opt_fit_sum <- summary(pred_opt_fit)
+f_pred_mean <- pred_opt_fit_sum$summary[1:n,1]
+cor_mean <- cor(f_pred_mean, dats$data$x1) # the mean correlation .62
+
+# mean and MSE of beta estimates
+stan_EB_beta_mean <- opt_fit$par[4:7]
+
+
+
+## Full Bayes, takes around 8 hours
 inits <- list(.2, .2, .5, .5, c(.1, .1, .1), c(rep(.5,length(dats$data$y))))
 names(inits) <- c("lengthscale", "sigma", "sigma_e", "alpha", "beta", "f_predict")
 inits_chain1 <- list(inits)
 
-# sample with prediction
-dgp_fit <- stan(file='mimix_gauss_pr_with_pred_v2.stan', data=f_data, iter=1000, warmup=100,
+dgp_fit <- stan(file='mimix_gp_full_bayes.stan', data=f_data, iter=1000, warmup=100,
                 init = inits_chain1, chains=1, seed=2, refresh=1, algorithm="NUTS")
+save.image("gp_fit_stan_FB.RData")
 
-save.image("gp_fit_stan.RData")
 
 # correlation of x1 and f_predict
 # store samples in a matrix
-load("gp_fit_stan.RData")
+load("gp_fit_stan_FB.RData")
 n = length(dats$data$y)
 iter_n = dgp_fit@sim$iter
 
-f_pred <- matrix(0,n,iter_n)
-for (i in 1:n){
-  f_pred[i,] <- dgp_fit@sim$samples[[1]][[i+7]]
-}
+p_samples <- data.frame(dgp_fit@sim$samples[[1]])
+f_pred <- p_samples[,8:(ncol(p_samples)-1)]
+
 
 # correlation of x1 and each sample of f_predict
-corGP <- 0
-burn_in = 100 # the first 16 samples are outside of the distribution
-for (i in (burn_in+1):iter_n) {
-  corGP[i-burn_in] = cor(f_pred[,i],dats$data$x1)
-}
+corGP <- apply(f_pred, 1, function(x) cor(x,dats$data$x1))
 hist(corGP)
 mean(corGP) # the mean correlation .61
+
 
 # correlation of x1 and mean f_predict
 dgp_fit_sum <- summary(dgp_fit)
@@ -197,12 +258,12 @@ f_pred_mean <- dgp_fit_sum$summary[8:(n+7),1]
 cor_mean <- cor(f_pred_mean, dats$data$x1) # the mean correlation .62
 
 # mean and MSE of beta estimates
-stan_beta_mean <- dgp_fit_sum$summary[4:7,1]
-beta_se_mean <- dgp_fit_sum$summary[4:7,2]
+stan_FB_beta_mean <- dgp_fit_sum$summary[4:7,1]
+stan_FB_beta_se <- dgp_fit_sum$summary[4:7,2]
 
 
 #### coefficient results ####
-methods <- c("truth", "lm", "GLS", "SEVM", "WRM", "GAM", "GPstuff", "GP_Stan")
+methods <- c("truth", "lm", "GLS", "SEVM", "WRM", "GAM", "GPstuff_EB", "GP_Stan_EB", "GP_Stan_FB")
 no.of.covariates <- length(strsplit(dats$readme$Response_coefficients, "+", fixed=T)[[1]]) -1
 coef.res <- matrix(NA, nrow=length(methods), ncol=no.of.covariates)
 rownames(coef.res) <- methods
@@ -219,7 +280,9 @@ coef.res[4,] <- c(0, coef(fmME)[-c(1, 5:179)][c(1,2,4,3)]) # 0 for omitted x1
 coef.res[5,] <- c(0, fmWRM$b[2:5][c(1,2,4,3)]) # 0 for omitted x1
 coef.res[6,] <- c(0, coef(fmGAM)[2:5][c(1,2,4,3)]) # 0 for omitted x1
 coef.res[7,] <- c(0, GPstuff_beta_mean[c(1,2,4,3),1]) # 0 for omitted x1
-coef.res[8,] <- c(0, Stan_beta_mean[c(1,2,4,3)]) # 0 for omitted x1
+coef.res[8,] <- c(0, stan_FB_beta_mean[c(1,2,4,3)]) # 0 for omitted x1
+coef.res[9,] <- c(0, stan_EB_beta_mean[c(1,2,4,3)]) # 0 for omitted x1
+
 
 coef.se.res[1,] <- NA
 coef.se.res[2,] <- c(0, summary(fmLM)$coefficients[-1,2][c(1,2,4,3)]) # 0 for omitted x1
@@ -227,7 +290,7 @@ coef.se.res[3,] <- c(0, summary(fmGLS)$tTable[-1,2][c(1,2,4,3)]) # 0 for omitted
 coef.se.res[4,] <- c(0, summary(fmME)$coefficients[-c(1, 5:179),2][c(1,2,4,3)]) # 0 for omitted x1
 coef.se.res[5,] <- c(0, fmWRM$"s.e."[2:5][c(1,2,4,3)]) # 0 for omitted x1
 coef.se.res[6,] <- c(0, summary(fmGAM)$se[2:5][c(1,2,4,3)]) # 0 for omitted x1
-coef.se.res[7,] <- c(0, stan_se_mean[c(1,2,4,3)]) # 0 for omitted x1
+coef.se.res[7,] <- c(0, stan_FB_beta_se[c(1,2,4,3)]) # 0 for omitted x1
 
 
 

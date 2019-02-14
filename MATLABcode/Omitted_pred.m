@@ -12,7 +12,7 @@ for i02 = 1:size(covariates,2)
 end
 
 % vector of y:s
-y(:,:) = ncread('\\ad.helsinki.fi\home\j\juzmakin\Documents\Freiburg\mimiX\Rcode\dataset212.nc','y');
+y = ncread('\\ad.helsinki.fi\home\j\juzmakin\Documents\Freiburg\mimiX\Rcode\dataset212.nc','y');
 
 figure('pos', [100,100,500,300])
 
@@ -46,48 +46,63 @@ set(gca, 'Clim', [-1 1], 'YLim', [0 1])
 % likelihood
 lik = lik_gaussian;
 
+x_temp = [x(:,2) x(:,3) x(:,7) x(:,7).^2 x(:,6).*x(:,7)];
+ 
+models = {'Matern_gp', 'Sqrd_exp_gp'};
+
 % standardize covariates
 standind = find(strcmp(covariates,env_cov{1})):size(x,2);
 % mx = mean(x(:,standind)); stdx = std(x(:,standind));
 % x_sub = [x(:,1:min(standind)-1) (x(:,standind)-mx)./stdx];
 
+% likelihood
+lik.p.sigma2 = prior_gaussian('s2', 10);
+
 % intercept
 cfc = gpcf_constant('constSigma2', 10, 'constSigma2_prior', prior_fixed);
 
 % linear effect
-cf_linear = gpcf_linear('selectedVariables', standind(4), ...
-        'coeffSigma2', 10, 'coeffSigma2_prior', prior_fixed);
+cf_linear = gpcf_linear('selectedVariables', 3:5, ...
+        'coeffSigma2', ones(1,3)*10, 'coeffSigma2_prior', prior_fixed);
 
-% squared effect
-cf_squared = gpcf_squared('selectedVariables', standind(4), ...
-        'coeffSigma2', 10, 'coeffSigma2_prior', prior_fixed);
+cfs_matern = gpcf_matern32('magnSigma2', 1, 'lengthScale', 2, 'selectedVariables', ...
+    [1 2], 'lengthScale_prior', prior_t('s2',.1), 'magnSigma2_prior', prior_t('s2',1));
 
-cf_interaction = gpcf_prod('cf', {gpcf_linear('selectedVariables', ...
-    standind(4), 'coeffSigma2', 10, 'coeffSigma2_prior', prior_fixed), ...
-    gpcf_linear('selectedVariables', standind(3), 'coeffSigma2', 10, ...
-    'coeffSigma2_prior', prior_fixed)});
+cfs_sqrd_exp = gpcf_sexp('magnSigma2', 1, 'lengthScale', 2, 'selectedVariables', ...
+    [1 2], 'lengthScale_prior', prior_t('s2',.1), 'magnSigma2_prior', prior_t('s2',1));
 
-cfs = gpcf_matern32('magnSigma2', 1, 'lengthScale', 2, 'selectedVariables', ...
-    [2 3], 'lengthScale_prior', prior_t('s2',.1), 'magnSigma2_prior', prior_t('s2',1));
+for i01 = 1:size(models,2)
+    rng(3*i01)
+    model = models{i01};
+    switch model
+        case 'Matern_gp'
+            gp = gp_set('lik',lik,'cf',{cfc cf_linear cfs_matern});
+        case 'Sqrd_exp_gp'
+            gp = gp_set('lik',lik,'cf',{cfc cf_linear cfs_sqrd_exp});
+    end
 
-gp = gp_set('lik',lik,'cf',{cfc cf_linear cf_squared cf_interaction cfs});
+    opt=optimset('TolFun',1e-3,'TolX',1e-3,'Display','iter');
+    gp=gp_optim(gp,x_temp,y,'opt',opt);
 
-opt=optimset('TolFun',1e-3,'TolX',1e-3,'Display','iter');
-gp=gp_optim(gp,x,y,'opt',opt);
+    [Ef_j, Covf_j] = gp_jpred(gp,x_temp,y,x_temp,'predcf',3);
+    LCovf_j = chol(Covf_j,'lower');
+    samp_gp = repmat(Ef_j,1,2000) + LCovf_j*randn(size(Ef_j,1),2000);
+    
+    % test with manual posterior calculation
+    [K, C] = gp_trcov(gp,x_temp,3);
+    Ef_temp = K*inv(C)*y;
+    
+    
+    
+    [Ef1,Varf1] = gp_pred(gp,x_temp,y,[zeros(1,2) 1 zeros(1,2)],'predcf',1);
+    [Ef2,Varf2] = gp_pred(gp,x_temp,y,[zeros(1,2) 1 zeros(1,2)],'predcf',2);
+    [Ef3,Varf3] = gp_pred(gp,x_temp,y,[zeros(1,3) 1 zeros(1,1)],'predcf',2);
+    [Ef4,Varf4] = gp_pred(gp,x_temp,y,[zeros(1,4) 1],'predcf',2);
+    Beta_estimate = [Ef1, Varf1, Ef2, Varf2, Ef3, Varf3, Ef4, Varf4];
 
-[Ef, Varf] = gp_pred(gp,x,y,x,'predcf',5);
-[Ef_j, Covf_j] = gp_jpred(gp,x,y,x,'predcf',5);
-LCovf_j = chol(Covf_j,'lower');
-samp_gp = repmat(Ef_j,1,2000) + LCovf_j*randn(size(Ef_j,1),2000);
+    dlmwrite(sprintf('%s%s_omitted_pred.txt',data_folder,model),samp_gp);
+    dlmwrite(sprintf('%s%s_omitted_pred_mean.txt',data_folder,model),Ef_j);
+    dlmwrite(sprintf('%s%s_beta_estimate.txt',data_folder,model),Beta_estimate);
+    save([data_folder model], 'gp', 'Ef', 'Ef1', 'Ef2', 'Ef3', 'Ef4')
 
-[Ef1,Varf1] = gp_pred(gp,x,y,[zeros(1,6) 1 zeros(1,3)],'predcf',1);
-[Ef2,Varf2] = gp_pred(gp,x,y,[zeros(1,6) 1 zeros(1,3)],'predcf',2);
-[Ef3,Varf3] = gp_pred(gp,x,y,[zeros(1,6) 1 zeros(1,3)],'predcf',3);
-[Ef4,Varf4] = gp_pred(gp,x,y,[zeros(1,5) 1 1 zeros(1,3)],'predcf',4);
-Beta_estimate = [Ef1, Varf1, Ef2, Varf2, Ef3, Varf3, Ef4, Varf4];
-
-dlmwrite(sprintf('%sOmitted_pred.txt',data_folder),samp_gp);
-dlmwrite(sprintf('%sOmitted_pred_mean.txt',data_folder),Ef);
-dlmwrite(sprintf('%sBeta_estimate.txt',data_folder),Beta_estimate);
-save([data_folder 'Model_gp'], 'gp', 'Ef', 'Ef1', 'Ef2', 'Ef3','Ef4')
-
+end
